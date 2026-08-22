@@ -59,3 +59,34 @@ dotnet run --project .\desktop -- --fixture .\desktop\fixtures\get-subscribe.jso
 ## Android integration note
 
 `android/XboardSubscriptionParser.kt` is deliberately independent from the existing v2rayNG storage classes. In the native UI/service layer, call `XboardSubscriptionParser.parse(...)` after the authenticated request, then map each returned profile to one existing `SubscriptionItem` / `SubItem` record. Use a stable key based on `subscriptionId` when present; never merge profiles by panel host because that would combine the internal and external packages.
+
+
+## GitHub Actions 云端打包与签名
+
+发布工作流位于 `.github/workflows/release.yml`，只在 GitHub Actions runner 上构建，不在本地执行打包或生成自签名证书：
+
+- Windows：`v2rayN-G-windows-x64.zip`
+- macOS：`v2rayN-G-macos-x64.dmg`、`v2rayN-G-macos-arm64.dmg`
+- Android：使用 Play Store release variant 生成，并用仓库 Secrets 中的正式 Android keystore 签名
+- 所有构建文件和 `SHA256SUMS.txt` 都生成 GitHub keyless Sigstore 构建证明（artifact attestation）
+- 如果配置 `GPG_PRIVATE_KEY`，发布页还会附带每个文件的 ASCII-armored `.asc` detached signature 和 `v2rayN-G-public-key.asc`
+
+### 必需的 GitHub Secrets
+
+在仓库 Settings → Secrets and variables → Actions 中配置 Android 发布签名所需的四项：
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+不要把 keystore、密码或私钥提交到仓库。若需要额外提供可离线验证的 GPG detached signature，再配置：`GPG_PRIVATE_KEY`。
+
+GPG 密钥不是 Windows/macOS 的受信任代码签名证书；它用于验证发布文件来源。GitHub keyless attestation 使用 GitHub Actions 的 OIDC 身份和 Sigstore 公共透明日志，不能替代 Apple Developer ID、Windows 公共代码签名证书或 Android keystore。
+
+### 触发发布
+
+1. 推送 `v*` 标签，例如 `v0.1.0`；或
+2. 在 GitHub Actions 页面手动运行 Build and release v2rayN-G，填写标签。
+
+工作流会在云端构建并直接创建 GitHub Release；本地不会运行 Windows、Android、macOS 打包命令。
