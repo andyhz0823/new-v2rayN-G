@@ -169,10 +169,41 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK 29
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=0 "ndk;29.0.14206865"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+          sed -i '10i\    ndkVersion = "29.0.14206865"' v2rayNG/V2rayNG/app/build.gradle.kts
+
+      - name: Build hev-socks5-tunnel native library
+        working-directory: v2rayNG
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash compile-hevtun.sh
+          cp -R libs V2rayNG/app/
+
+      - name: Fetch AndroidLibXrayLite release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$(git -C v2rayNG/AndroidLibXrayLite describe --tags --abbrev=0)"
+          echo "ANDROID_LIB_XRAY_TAG=$tag" >> "$GITHUB_ENV"
+
+      - name: Download libv2ray AAR
+        uses: robinraju/release-downloader@v1.13
+        with:
+          repository: 2dust/AndroidLibXrayLite
+          tag: ${{ env.ANDROID_LIB_XRAY_TAG }}
+          fileName: libv2ray.aar
+          out-file-path: v2rayNG/V2rayNG/app/libs
 
       - name: Build Play Store release APK
         working-directory: v2rayNG/V2rayNG
