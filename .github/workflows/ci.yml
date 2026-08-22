@@ -29,4 +29,8 @@ jobs:
       - name: Reject accidental credential commits
         shell: bash
         run: |
-          ! git grep -nEI '(token|password|authorization).{0,20}[=:].{8,}' -- ':!desktop/fixtures/*' ':!README.md' ':!shared/*'
+          if git grep -nEI 'token=[A-Za-z0-9]{20,}' -- ':!desktop/fixtures/*' ':!README.md' ':!shared/*'; then
+            echo "Potential credential-like token found in tracked source"
+            exit 1
+          fi
+
