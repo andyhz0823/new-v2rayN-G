@@ -1,0 +1,9 @@
+bin/
+obj/
+artifacts/
+**/subscriptions.json
+*.user
+*.suo
+.env
+.env.*
+!config.example.json

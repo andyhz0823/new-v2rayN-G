@@ -1,0 +1,30 @@
+{
+  "status": "success",
+  "data": {
+    "subscriptions": [
+      {
+        "id": 101,
+        "plan_id": 1,
+        "plan_name": "内部基础套餐",
+        "subscribe_url": "https://panel.example.com/101/sub",
+        "u": 0,
+        "d": 1024,
+        "transfer_enable": 10737418240,
+        "expired_at": 4102444800,
+        "is_external": false
+      },
+      {
+        "id": 202,
+        "plan_id": 2,
+        "plan_name": "vip-2 外部订阅",
+        "subscribe_url": "https://external.example.com/api/client.conf?token=REDACTED",
+        "u": 0,
+        "d": 1024,
+        "transfer_enable": 10737418240,
+        "expired_at": 4102444800,
+        "is_external": true,
+        "source": "xboard-plan-group-2"
+      }
+    ]
+  }
+}

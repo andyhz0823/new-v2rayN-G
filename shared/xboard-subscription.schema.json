@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Xboard client subscription response",
+  "type": "object",
+  "required": ["status", "data"],
+  "properties": {
+    "status": { "const": "success" },
+    "message": { "type": ["string", "null"] },
+    "data": {
+      "type": "object",
+      "properties": {
+        "subscribe_url": { "type": ["string", "null"], "format": "uri" },
+        "subscriptions": { "$ref": "#/$defs/subscriptions" },
+        "plans": { "$ref": "#/$defs/subscriptions" },
+        "profiles": { "$ref": "#/$defs/subscriptions" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "subscriptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["subscribe_url"],
+        "properties": {
+          "id": { "type": ["integer", "string", "null"] },
+          "subscription_id": { "type": ["integer", "string", "null"] },
+          "plan_id": { "type": ["integer", "string", "null"] },
+          "plan_name": { "type": ["string", "null"] },
+          "subscribe_url": { "type": "string", "format": "uri" },
+          "u": { "type": ["integer", "string", "null"] },
+          "d": { "type": ["integer", "string", "null"] },
+          "transfer_enable": { "type": ["integer", "string", "null"] },
+          "expired_at": { "type": ["integer", "string", "null"] },
+          "source": { "type": ["string", "null"] },
+          "is_external": { "type": ["boolean", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

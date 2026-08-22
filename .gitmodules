@@ -1,0 +1,6 @@
+[submodule "v2rayN"]
+	path = v2rayN
+	url = https://github.com/2dust/v2rayN.git
+[submodule "v2rayNG"]
+	path = v2rayNG
+	url = https://github.com/2dust/v2rayNG.git

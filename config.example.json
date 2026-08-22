@@ -1,0 +1,7 @@
+{
+  "panelUrl": "https://panel.example.com",
+  "appendInternalFlag": true,
+  "internalFlag": "v2rayn-g",
+  "refreshMinutes": 60,
+  "subscriptions": []
+}

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    name: Bridge fixture and .NET compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Compile the Xboard bridge
+        run: dotnet build desktop/v2rayn-g.Desktop.csproj --configuration Release --nologo
+      - name: Verify internal and external profile parsing
+        run: >-
+          dotnet run --project desktop/v2rayn-g.Desktop.csproj --configuration Release --
+          --fixture desktop/fixtures/get-subscribe.json --panel-url https://panel.example.com
+      - name: Reject accidental credential commits
+        shell: bash
+        run: |
+          ! git grep -nEI '(token|password|authorization).{0,20}[=:].{8,}' -- ':!desktop/fixtures/*' ':!README.md' ':!shared/*'
