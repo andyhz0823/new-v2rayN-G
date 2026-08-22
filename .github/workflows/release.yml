@@ -206,7 +206,6 @@ jobs:
               --key-pass "pass:$ANDROID_KEY_PASSWORD" \
               --out "artifacts/release/v2rayNG-G-$name" "$apk"
           done
-
       - name: Verify APK signature
         shell: bash
         run: |
