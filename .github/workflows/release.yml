@@ -178,7 +178,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # sdkmanager exits after reading all licenses; yes may receive SIGPIPE,
+          # so do not let that harmless producer exit fail the step under pipefail.
+          set +e
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=0 "ndk;29.0.14206865"
+          sdkmanager_status=$PIPESTATUS[1]
+          set -e
+          (( sdkmanager_status == 0 )) || exit "$sdkmanager_status"
           echo "NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
           sed -i '10i\    ndkVersion = "29.0.14206865"' v2rayNG/V2rayNG/app/build.gradle.kts
 
