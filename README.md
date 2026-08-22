@@ -68,7 +68,7 @@ dotnet run --project .\desktop -- --fixture .\desktop\fixtures\get-subscribe.jso
 - Windows：`v2rayN-G-windows-x64.zip`
 - macOS：`v2rayN-G-macos-x64.dmg`、`v2rayN-G-macos-arm64.dmg`
 - Android：使用 Play Store release variant 生成，并用仓库 Secrets 中的正式 Android keystore 签名
-- 所有构建文件和 `SHA256SUMS.txt` 都生成 GitHub keyless Sigstore 构建证明（artifact attestation）
+- 所有构建文件和 `SHA256SUMS.txt` 都生成 GitHub keyless Sigstore 构建证明（artifact attestation），并生成可用 `cosign verify-blob` 校验的 `.sigstore.json` bundle
 - 如果配置 `GPG_PRIVATE_KEY`，发布页还会附带每个文件的 ASCII-armored `.asc` detached signature 和 `v2rayN-G-public-key.asc`
 
 ### 必需的 GitHub Secrets
@@ -82,7 +82,7 @@ dotnet run --project .\desktop -- --fixture .\desktop\fixtures\get-subscribe.jso
 
 不要把 keystore、密码或私钥提交到仓库。若需要额外提供可离线验证的 GPG detached signature，再配置：`GPG_PRIVATE_KEY`。
 
-GPG 密钥不是 Windows/macOS 的受信任代码签名证书；它用于验证发布文件来源。GitHub keyless attestation 使用 GitHub Actions 的 OIDC 身份和 Sigstore 公共透明日志，不能替代 Apple Developer ID、Windows 公共代码签名证书或 Android keystore。
+GPG 密钥不是 Windows/macOS 的受信任代码签名证书；它用于验证发布文件来源。GitHub keyless Sigstore 使用 GitHub Actions 的 OIDC 身份、Fulcio 临时证书和 Rekor 公共透明日志，不能替代 Apple Developer ID、Windows 公共代码签名证书或 Android keystore。Android APK 仍必须使用同一份长期保存的 release keystore 才能支持后续覆盖升级。
 
 ### 触发发布
 

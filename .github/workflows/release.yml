@@ -256,6 +256,19 @@ jobs:
         with:
           subject-path: artifacts/release/SHA256SUMS.txt
 
+      - name: Install Cosign for keyless release signing
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Create Sigstore keyless signatures for release files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd artifacts/release
+          for file in *.zip *.dmg *.apk SHA256SUMS.txt; do
+            [[ -f "$file" ]] || continue
+            # GitHub Actions OIDC + Sigstore Fulcio/Rekor; no private signing key is stored locally.
+            cosign sign-blob --yes --bundle "$file.sigstore.json" "$file"
+          done
       - name: Create GPG signatures when a repository signing key is configured
         shell: bash
         run: |
@@ -300,6 +313,7 @@ jobs:
             artifacts/release/*.dmg
             artifacts/release/*.apk
             artifacts/release/SHA256SUMS.txt
+            artifacts/release/*.sigstore.json
 
       - name: Upload optional GPG signatures and public key
         if: success()
