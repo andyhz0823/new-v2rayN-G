@@ -1,0 +1,393 @@
+diff --git a/V2rayNG/app/src/main/AndroidManifest.xml b/V2rayNG/app/src/main/AndroidManifest.xml
+index e26a81e12596ebb7889ca7b666d7bd2a1c536505..310f7761c3ac472452e2b7251761a1ba676f4251 100644
+--- a/V2rayNG/app/src/main/AndroidManifest.xml
++++ b/V2rayNG/app/src/main/AndroidManifest.xml
+@@ -62,15 +62,19 @@
+         </service>
+
+         <activity
+-            android:name=".ui.main.MainActivity"
++            android:name=".ui.xboard.XboardLoginActivity"
+             android:exported="true"
+             android:launchMode="singleTask">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+-
+                 <category android:name="android.intent.category.LAUNCHER" />
+                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+             </intent-filter>
++        </activity>
++        <activity
++            android:name=".ui.main.MainActivity"
++            android:exported="false"
++            android:launchMode="singleTask">
+             <intent-filter>
+                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+             </intent-filter>
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
+index fb8187f12e03500fc53b0a4919c0dd50732f83b0..3d2756f41905d7e785a1477b60b16783f5d028f1 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
+@@ -91,6 +91,12 @@ class MainActivity : HelperBaseComponentActivity() {
+         }
+
+     override fun onCreate(savedInstanceState: Bundle?) {
++        if (!com.v2ray.ang.xboard.XboardLoginSession.authenticated) {
++            super.onCreate(savedInstanceState)
++            startActivity(Intent(this, com.v2ray.ang.ui.xboard.XboardLoginActivity::class.java))
++            finish()
++            return
++        }
+         super.onCreate(savedInstanceState)
+         mainViewModel.onAction(MainAction.Initialize)
+
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/xboard/XboardLoginActivity.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/xboard/XboardLoginActivity.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..06a5d8abef93c80c6f2d39b326178a6fe7d3152a
+--- /dev/null
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/xboard/XboardLoginActivity.kt
+@@ -0,0 +1,96 @@
++package com.v2ray.ang.ui.xboard
++
++import android.content.Intent
++import android.os.Bundle
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Spacer
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.height
++import androidx.compose.foundation.layout.padding
++import androidx.compose.material3.Button
++import androidx.compose.material3.CircularProgressIndicator
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.OutlinedTextField
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.text.input.PasswordVisualTransformation
++import androidx.compose.ui.unit.dp
++import androidx.lifecycle.lifecycleScope
++import com.v2ray.ang.ui.base.BaseComponentActivity
++import com.v2ray.ang.ui.main.MainActivity
++import com.v2ray.ang.xboard.XboardApiClient
++import com.v2ray.ang.xboard.XboardLoginSession
++import com.v2ray.ang.xboard.XboardSubscriptionSync
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.launch
++import kotlinx.coroutines.withContext
++
++class XboardLoginActivity : BaseComponentActivity() {
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        if (XboardLoginSession.authenticated) openMain()
++    }
++
++    @Composable
++    override fun ScreenContent() {
++        var panelUrl by remember { mutableStateOf("") }
++        var email by remember { mutableStateOf("") }
++        var password by remember { mutableStateOf("") }
++        var status by remember { mutableStateOf("") }
++        var loading by remember { mutableStateOf(false) }
++
++        Column(
++            modifier = Modifier.fillMaxSize().padding(28.dp),
++            verticalArrangement = Arrangement.Center
++        ) {
++            Text("v2rayNG-G", style = MaterialTheme.typography.headlineMedium)
++            Spacer(Modifier.height(8.dp))
++            Text("登录 Xboard 后自动同步已购买的订阅套餐")
++            Spacer(Modifier.height(22.dp))
++            OutlinedTextField(panelUrl, { panelUrl = it }, Modifier.fillMaxWidth(), label = { Text("Xboard 面板地址") }, singleLine = true)
++            OutlinedTextField(email, { email = it }, Modifier.fillMaxWidth(), label = { Text("邮箱") }, singleLine = true)
++            OutlinedTextField(password, { password = it }, Modifier.fillMaxWidth(), label = { Text("密码") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
++            Spacer(Modifier.height(12.dp))
++            if (status.isNotBlank()) Text(status, color = MaterialTheme.colorScheme.error)
++            Spacer(Modifier.height(8.dp))
++            Button(
++                onClick = {
++                    loading = true
++                    status = "正在登录并同步套餐……"
++                    lifecycleScope.launch {
++                        try {
++                            val profiles = withContext(Dispatchers.IO) {
++                                XboardApiClient(panelUrl).loginAndGetSubscriptions(email, password)
++                            }
++                            val ids = withContext(Dispatchers.IO) {
++                                XboardSubscriptionSync.sync(this@XboardLoginActivity, profiles)
++                            }
++                            XboardLoginSession.markAuthenticated()
++                            status = "已同步 ${ids.size} 个订阅分组"
++                            openMain()
++                        } catch (error: Exception) {
++                            status = error.message ?: "登录失败"
++                            loading = false
++                        }
++                    }
++                },
++                enabled = !loading && panelUrl.isNotBlank() && email.isNotBlank() && password.isNotBlank(),
++                modifier = Modifier.fillMaxWidth()
++            ) {
++                if (loading) CircularProgressIndicator(strokeWidth = 2.dp) else Text("登录并同步套餐")
++            }
++        }
++    }
++
++    private fun openMain() {
++        startActivity(Intent(this, MainActivity::class.java))
++        finish()
++    }
++}
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardApiClient.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardApiClient.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..b98a78added32369dd68bf3f9bfa9cb7c70072a9
+--- /dev/null
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardApiClient.kt
+@@ -0,0 +1,68 @@
++package com.v2ray.ang.xboard
++
++import okhttp3.MediaType.Companion.toMediaType
++import okhttp3.OkHttpClient
++import okhttp3.Request
++import okhttp3.RequestBody.Companion.toRequestBody
++import org.json.JSONObject
++import java.util.concurrent.TimeUnit
++
++class XboardApiClient(panelUrl: String) {
++    private val panelUrl = XboardSubscriptionParser.normalizeHttpUrl(panelUrl).trimEnd('/') + "/"
++    private val http = OkHttpClient.Builder()
++        .connectTimeout(15, TimeUnit.SECONDS)
++        .readTimeout(20, TimeUnit.SECONDS)
++        .build()
++
++    suspend fun loginAndGetSubscriptions(email: String, password: String): List<XboardSubscriptionProfile> {
++        require(email.isNotBlank() && password.isNotBlank()) { "请输入邮箱和密码" }
++        val body = JSONObject().apply {
++            put("email", email)
++            put("password", password)
++        }.toString().toRequestBody("application/json".toMediaType())
++        val login = execute(
++            Request.Builder()
++                .url(panelUrl + "api/v1/passport/auth/login")
++                .post(body)
++                .build()
++        )
++        val loginData = requireData(login, "登录失败，请检查面板地址、邮箱和密码")
++        val authData = loginData.optString("auth_data").removePrefix("Bearer ").trim()
++        if (authData.isBlank()) throw IllegalStateException("登录响应缺少鉴权信息")
++
++        val subscribe = execute(
++            Request.Builder()
++                .url(panelUrl + "api/v1/user/getSubscribe")
++                .header("Authorization", "Bearer $authData")
++                .build()
++        )
++        return XboardSubscriptionParser.parse(subscribe, panelUrl)
++    }
++
++    private suspend fun execute(request: Request): JSONObject = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
++        http.newCall(request).execute().use { response ->
++            val text = response.body?.string().orEmpty()
++            if (!response.isSuccessful) {
++                val message = runCatching { JSONObject(text).optString("message") }.getOrNull().orEmpty()
++                throw IllegalStateException(message.ifBlank { "Xboard 请求失败（HTTP ${response.code}）" })
++            }
++            JSONObject(text)
++        }
++    }
++
++    private fun requireData(envelope: JSONObject, fallback: String): JSONObject {
++        if (!envelope.optString("status").equals("success", ignoreCase = true)) {
++            throw IllegalStateException(envelope.optString("message").ifBlank { fallback })
++        }
++        return envelope.optJSONObject("data") ?: throw IllegalStateException(fallback)
++    }
++}
++
++object XboardLoginSession {
++    var authenticated: Boolean = false
++        private set
++
++    fun markAuthenticated() { authenticated = true }
++    fun clear() { authenticated = false }
++}
++
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardSubscriptionParser.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardSubscriptionParser.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..63b55191406501d7d9915df4627eb1398ab1a8e6
+--- /dev/null
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardSubscriptionParser.kt
+@@ -0,0 +1,104 @@
++package com.v2ray.ang.xboard
++
++import android.net.Uri
++import org.json.JSONArray
++import org.json.JSONObject
++
++/**
++ * Parse the authenticated Xboard getSubscribe payload into independent v2rayNG
++ * subscription records. Invoke this after the app performs the Xboard login
++ * and GET /api/v1/user/getSubscribe with the returned Bearer auth_data token.
++ */
++data class XboardSubscriptionProfile(
++    val subscribeUrl: String,
++    val name: String? = null,
++    val planId: Long? = null,
++    val subscriptionId: Long? = null,
++    val upload: Long? = null,
++    val download: Long? = null,
++    val total: Long? = null,
++    val expireAt: Long? = null,
++    val source: String? = null,
++    val isExternal: Boolean = false
++) {
++    fun isUsable(nowSeconds: Long = System.currentTimeMillis() / 1000): Boolean {
++        val expiry = expireAt ?: 0L
++        val seconds = if (expiry > 9_999_999_999L) expiry / 1000 else expiry
++        if (seconds > 0 && seconds <= nowSeconds) return false
++        return total == null || (upload ?: 0L) + (download ?: 0L) < total
++    }
++}
++
++object XboardSubscriptionParser {
++    fun parse(envelope: JSONObject, panelUrl: String): List<XboardSubscriptionProfile> {
++        if (!envelope.optString("status").equals("success", ignoreCase = true)) {
++            throw IllegalArgumentException(envelope.optString("message", "Xboard request failed"))
++        }
++        val data = envelope.optJSONObject("data")
++            ?: throw IllegalArgumentException("Xboard response data is invalid")
++        return parseData(data, Uri.parse(normalizeHttpUrl(panelUrl).trimEnd('/') + "/"))
++    }
++
++    fun parseData(data: JSONObject, panelUri: Uri): List<XboardSubscriptionProfile> {
++        val items = firstArray(data, "subscriptions", "plans", "profiles")
++        val result = linkedMapOf<String, XboardSubscriptionProfile>()
++        for (index in 0 until items.length()) {
++            val item = items.optJSONObject(index) ?: continue
++            val rawUrl = firstString(item, "subscribe_url", "subscription_url", "subscribeUrl", "url", "link")
++            if (rawUrl.isBlank()) continue
++            val resolved = Uri.parse(normalizeHttpUrl(rawUrl))
++            val external = if (item.has("is_external")) item.optBoolean("is_external")
++            else !resolved.host.equals(panelUri.host, ignoreCase = true)
++            val profile = XboardSubscriptionProfile(
++                subscribeUrl = normalizeSubscriptionUrl(rawUrl, panelUri, external),
++                name = firstString(item, "plan_name", "name", "title").ifBlank { null },
++                planId = longOrNull(item, "plan_id"),
++                subscriptionId = longOrNull(item, "id", "subscription_id"),
++                upload = longOrNull(item, "u", "upload"),
++                download = longOrNull(item, "d", "download"),
++                total = longOrNull(item, "transfer_enable", "total"),
++                expireAt = longOrNull(item, "expired_at", "expire_at", "expire"),
++                source = firstString(item, "source").ifBlank { null },
++                isExternal = external
++            )
++            result.putIfAbsent(profile.subscriptionId?.let { "id:$it" } ?: "url:${profile.subscribeUrl}", profile)
++        }
++        if (result.isEmpty()) {
++            val fallback = firstString(data, "subscribe_url", "subscription_url", "subscribeUrl", "url", "link")
++            if (fallback.isNotBlank()) result["url:$fallback"] = XboardSubscriptionProfile(
++                subscribeUrl = normalizeSubscriptionUrl(fallback, panelUri, null),
++                name = firstString(data, "plan_name", "name", "title").ifBlank { null },
++                planId = longOrNull(data, "plan_id")
++            )
++        }
++        return result.values.toList()
++    }
++
++    fun normalizeHttpUrl(value: String): String = value.trim().let {
++        if (it.contains("://")) it else "https://$it"
++    }
++
++    /** Add the client flag only for a same-origin Xboard URL; external URLs remain byte-for-byte untouched. */
++    fun normalizeSubscriptionUrl(value: String, panelUri: Uri, external: Boolean?): String {
++        val normalized = normalizeHttpUrl(value)
++        val uri = Uri.parse(normalized)
++        if (external == true || !uri.host.equals(panelUri.host, ignoreCase = true)) return normalized
++        if (uri.getQueryParameter("flag") != null) return normalized
++        return uri.buildUpon().appendQueryParameter("flag", "v2rayn-g").build().toString()
++    }
++
++    private fun firstArray(obj: JSONObject, vararg keys: String): JSONArray {
++        keys.forEach { key -> obj.optJSONArray(key)?.let { return it } }
++        return JSONArray()
++    }
++
++    private fun firstString(obj: JSONObject, vararg keys: String): String {
++        keys.forEach { key ->
++            if (obj.has(key) && !obj.isNull(key)) obj.optString(key).trim().takeIf { it.isNotBlank() }?.let { return it }
++        }
++        return ""
++    }
++
++    private fun longOrNull(obj: JSONObject, vararg keys: String): Long? =
++        firstString(obj, *keys).toLongOrNull()
++}
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardSubscriptionSync.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardSubscriptionSync.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..0449f3856f5e5247cf0a6531838123e2090bb810
+--- /dev/null
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/xboard/XboardSubscriptionSync.kt
+@@ -0,0 +1,58 @@
++package com.v2ray.ang.xboard
++
++import android.content.Context
++import com.v2ray.ang.dto.entities.SubscriptionItem
++import com.v2ray.ang.handler.MmkvManager
++import com.v2ray.ang.handler.SubscriptionUpdater
++import com.v2ray.ang.helper.MessageHelper
++import com.v2ray.ang.AppConfig
++import com.v2ray.ang.dto.SubscriptionUpdateMessage
++import java.security.MessageDigest
++
++object XboardSubscriptionSync {
++    private const val MANAGED_PREFIX = "xboard:"
++
++    fun sync(context: Context, profiles: List<XboardSubscriptionProfile>): List<String> {
++        val usable = profiles.filter { it.isUsable() }
++        if (usable.isEmpty()) throw IllegalStateException("当前账号没有可用的订阅套餐（可能已到期或流量已用尽）")
++
++        val desired = usable.map { stableKey(it) }.toSet()
++        MmkvManager.decodeSubscriptions()
++            .filter { it.guid.startsWith(MANAGED_PREFIX) }
++            .filter { !desired.contains(it.guid.removePrefix(MANAGED_PREFIX)) }
++            .forEach { MmkvManager.removeSubscription(it.guid) }
++
++        val ids = mutableListOf<String>()
++        usable.forEach { profile ->
++            val key = stableKey(profile)
++            val id = MANAGED_PREFIX + key
++            val item = SubscriptionItem(
++                remarks = "${profile.name ?: "Xboard 订阅套餐"} [${if (profile.isExternal) "外部" else "内部"}]",
++                url = profile.subscribeUrl,
++                enabled = true,
++                autoUpdate = true,
++                updateInterval = 60L,
++                userAgent = "v2rayn-g/1.0"
++            )
++            MmkvManager.encodeSubscription(id, item)
++            ids += id
++        }
++        SubscriptionUpdater.sync(context, forceReschedule = true)
++        MessageHelper.sendMsg2SubscriptionService(
++            context,
++            SubscriptionUpdateMessage(AppConfig.MSG_SUB_UPDATE_START, true, ids)
++        )
++        return ids
++    }
++
++    private fun stableKey(profile: XboardSubscriptionProfile): String {
++        profile.subscriptionId?.let { return "subscription-$it" }
++        val digest = MessageDigest.getInstance("SHA-256")
++            .digest(profile.subscribeUrl.toByteArray())
++        return "url-" + digest.joinToString("") { "%02x".format(it) }.take(20)
++    }
++}
++
++
++
++

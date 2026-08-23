@@ -39,6 +39,10 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Apply v2rayN-G Xboard integration overlay
+        shell: pwsh
+        run: ./scripts/apply-xboard-overlays.ps1
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -92,6 +96,10 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Apply v2rayN-G Xboard integration overlay
+        shell: pwsh
+        run: ./scripts/apply-xboard-overlays.ps1
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -164,6 +172,10 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+
+      - name: Apply v2rayN-G Xboard integration overlay
+        shell: pwsh
+        run: ./scripts/apply-xboard-overlays.ps1
 
       - name: Set up JDK
         uses: actions/setup-java@v4

@@ -46,16 +46,18 @@ dotnet run --project .\desktop -- `
 dotnet run --project .\desktop -- --fixture .\desktop\fixtures\get-subscribe.json
 ```
 
-## v2rayN / v2rayNG 接入点
+## v2rayN / v2rayNG 原生接入
 
-- v2rayN：登录成功后，把 `XboardSubscriptionProfile` 映射为原有 `SubItem`，每项一个 `Id`，`Url` 使用 `SubscribeUrl`，然后调用上游已有的 `SubscriptionHandler.UpdateProcess`。
-- v2rayNG：登录成功后，把每个 profile 映射为原有 `SubscriptionItem`，保留独立 `remarks` / `subId`，然后调用上游 `SubscriptionUpdateService`。
+登录页已经接入两个上游客户端：
 
-不要把 Xboard 的 `auth_data`、订阅 token 或完整订阅 URL 写入日志；持久化时应使用系统安全存储，示例 CLI 只用于本地验证和集成开发。
+- Windows/macOS：启动时显示 `XboardLoginWindow`，登录成功后写入原生 `SubItem`，每个套餐一个稳定 ID，并调用 `SubscriptionHandler.UpdateProcess`。
+- Android：Launcher 改为 `XboardLoginActivity`，登录成功后写入原生 `SubscriptionItem`，每个套餐独立调度自动更新并通知现有订阅服务。
+
+由于 `v2rayN/` 与 `v2rayNG/` 是 Git submodule，根仓库使用 `patches/v2rayN-xboard.patch`、`patches/v2rayNG-xboard.patch` 保存集成改动；GitHub Actions checkout 后由 `scripts/apply-xboard-overlays.ps1` 自动重放。不要把 Xboard 的 `auth_data`、订阅 token 或完整订阅 URL 写入日志；持久化时应使用系统安全存储，示例 CLI 只用于本地验证和集成开发。
 
 ## 重要边界
 
-本次改动完成的是通用鉴权/多套餐桥接层和上游源码固定。若要交付带登录页面、Android VPN 权限引导、Windows 安装包和签名的最终产品，还需要在两个上游 UI 中接入对应按钮/页面并分别执行 Windows 与 Android 的正式构建；不应把这一步误认为已经由 API bridge 自动完成。
+客户端只负责登录和同步 Xboard 返回的订阅目录；权限组、流量和到期控制仍由 Xboard 服务端执行。客户端过滤明显到期或流量耗尽的套餐只是避免无效导入，不能替代服务端校验。正式 Windows/macOS/Android 包只通过 GitHub Actions 云端构建。
 ## Android integration note
 
 `android/XboardSubscriptionParser.kt` is deliberately independent from the existing v2rayNG storage classes. In the native UI/service layer, call `XboardSubscriptionParser.parse(...)` after the authenticated request, then map each returned profile to one existing `SubscriptionItem` / `SubItem` record. Use a stable key based on `subscriptionId` when present; never merge profiles by panel host because that would combine the internal and external packages.
