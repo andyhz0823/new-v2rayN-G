@@ -7,9 +7,9 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
 +using v2rayN.Desktop.Manager;
  using v2rayN.Desktop.Views;
 +using v2rayN.Desktop.Xboard;
-
+ 
  namespace v2rayN.Desktop;
-
+ 
 @@ -8,7 +10,6 @@ public partial class App : Application
      public override void Initialize()
      {
@@ -49,7 +49,7 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
 -
          base.OnFrameworkInitializationCompleted();
      }
-
+ 
 -    #region MacOS Activation
 -
 -    private void OnMacOSActivated(object? sender, ActivatedEventArgs args)
@@ -84,7 +84,7 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
 +        };
 +        loginWindow.Show();
 +    }
-
+ 
 -        if ((ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is not MainWindow mainWindow)
 -        {
 -            return;
@@ -96,7 +96,7 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
 +        mainWindow.ViewModel = mainWindowViewModel;
 +        desktop.MainWindow = mainWindow;
 +    }
-
+ 
 +    private void OnMacOSActivated(object? sender, ActivatedEventArgs args)
 +    {
 +        if (args.Kind != ActivationKind.Reopen) return;
@@ -120,7 +120,7 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
              mainWindow.ShowHideWindow(true);
          });
      }
-
+ 
      private static void RestoreMacOSAccessoryPolicyAfterMiniaturize(MainWindow mainWindow)
      {
 -        if (AppManager.Instance.Config.UiItem.MacOSShowInDock)
@@ -139,14 +139,14 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
 +            .Take(1).ObserveOn(RxSchedulers.MainThreadScheduler)
              .Subscribe(_ => QueueMacOSAccessoryPolicyRestore(mainWindow));
      }
-
+ 
 -    private static void QueueMacOSAccessoryPolicyRestore(MainWindow mainWindow)
 -    {
 -        // AppKit may keep isMiniaturized set until the Dock restore animation finishes.
 +    private static void QueueMacOSAccessoryPolicyRestore(MainWindow mainWindow) =>
          DispatcherTimer.RunOnce(() => RestoreMacOSAccessoryPolicy(mainWindow), TimeSpan.FromMilliseconds(300));
 -    }
-
+ 
      private static void RestoreMacOSAccessoryPolicy(MainWindow mainWindow)
      {
 -        if (AppManager.Instance.Config.UiItem.MacOSShowInDock || MacAppUtils.IsWindowMiniaturized(mainWindow))
@@ -159,7 +159,7 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
          mainWindow.Activate();
          mainWindow.Focus();
      }
-
+ 
 -    #endregion MacOS Activation
 -
 -    #region App Event
@@ -172,13 +172,13 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
 -        }
 +        if (e.ExceptionObject != null) Logging.SaveLog("CurrentDomain_UnhandledException", (Exception)e.ExceptionObject);
      }
-
+ 
 -    private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
 -    {
 +    private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e) =>
          Logging.SaveLog("TaskScheduler_UnobservedTaskException", e.Exception);
 -    }
-
+ 
      private async void MenuAddServerViaClipboardClick(object? sender, EventArgs e)
      {
 @@ -135,10 +130,7 @@ public partial class App : Application
@@ -191,7 +191,7 @@ index b53b4959e01384c8d29f89ca947cf62b3fdac533..e4280a23ab160569e8a6e269518ca04e
 -        }
 +        catch (Exception ex) { Logging.SaveLog("MenuAddServerViaClipboardClick", ex); }
      }
-
+ 
      private async void MenuExit_Click(object? sender, EventArgs e)
 @@ -146,6 +138,4 @@ public partial class App : Application
          await AppManager.Instance.AppExitAsync(false);

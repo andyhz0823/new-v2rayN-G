@@ -4,7 +4,7 @@ index e26a81e12596ebb7889ca7b666d7bd2a1c536505..310f7761c3ac472452e2b7251761a1ba
 +++ b/V2rayNG/app/src/main/AndroidManifest.xml
 @@ -62,15 +62,19 @@
          </service>
-
+ 
          <activity
 -            android:name=".ui.main.MainActivity"
 +            android:name=".ui.xboard.XboardLoginActivity"
@@ -30,7 +30,7 @@ index fb8187f12e03500fc53b0a4919c0dd50732f83b0..3d2756f41905d7e785a1477b60b16783
 +++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
 @@ -91,6 +91,12 @@ class MainActivity : HelperBaseComponentActivity() {
          }
-
+ 
      override fun onCreate(savedInstanceState: Bundle?) {
 +        if (!com.v2ray.ang.xboard.XboardLoginSession.authenticated) {
 +            super.onCreate(savedInstanceState)
@@ -40,7 +40,7 @@ index fb8187f12e03500fc53b0a4919c0dd50732f83b0..3d2756f41905d7e785a1477b60b16783
 +        }
          super.onCreate(savedInstanceState)
          mainViewModel.onAction(MainAction.Initialize)
-
+ 
 diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/xboard/XboardLoginActivity.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/xboard/XboardLoginActivity.kt
 new file mode 100644
 index 0000000000000000000000000000000000000000..06a5d8abef93c80c6f2d39b326178a6fe7d3152a
